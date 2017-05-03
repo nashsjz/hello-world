@@ -1,0 +1,412 @@
+
+source("https://bioconductor.org/biocLite.R")
+biocLite("EBSeq")
+browseVignettes("EBSeq")
+library(EBSeq)
+###t1=freshly_dead_nestmates, t2=decayed_nestmates, t3=freshly_dead_competitors, ck=no_corpse
+
+##make expression value matrix
+nrows<-5;
+
+expval1<-read.delim ('data/output_ck_vs_T1.counts.matrix')
+
+expval2<-read.delim('data/output_ck_vs_T2.counts.matrix')
+
+expval3<-read.delim('data/output_ck_vs_T3.counts.matrix')
+
+expval_ck.t1<-data.matrix(expval1)
+row.names(expval_ck.t1)<-expval1[,1]
+expval_ck.t1<-expval_ck.t1[,-1]
+
+expval_ck.t2<-data.matrix(expval2)
+row.names(expval_ck.t2)<-expval2[,1]
+expval_ck.t2<-expval_ck.t2[,-1]
+
+expval_ck.t3<-data.matrix(expval3)
+row.names(expval_ck.t3)<-expval1[,1]
+expval_ck.t3<-expval_ck.t3[,-1]
+
+#C1=ck,C2=t1,C3=t2,C4=t3
+Conditions = c("C1","C2", "C3","C4")
+PosParti=GetPatterns(Conditions)
+PosParti
+PlotPattern(PosParti)
+
+Parti=PosParti[c(8,14,15),]
+print(Parti)
+PlotPattern(Parti)
+
+
+##EBseq, diff expression test, DON'T RUN, takes more than 2 hours, C1=ck,C2=t1,C3=t2,C4=t3
+Multioutput.ck_t1<-EBMultiTest(expval_ck.t1, sizeFactors =c(1:4), maxround = 5, Conditions = c("C1","C2", "C3","C4"), AllParti = Parti)
+Multioutput.ck_t2<-EBMultiTest(expval_ck.t2, sizeFactors =c(1:4), maxround = 5, Conditions = c("C1","C2", "C3","C4"),AllParti = Parti)
+Multioutput.ck_t3<-EBMultiTest(expval_ck.t3, sizeFactors =c(1:4), maxround = 5, Conditions = c("C1","C2", "C3","C4"),AllParti = Parti)
+
+
+#multi conditions, get PP
+GenePP.ck_t1= GetPPMat(Multioutput.ck_t1)
+GenePP.ck_t2= GetPPMat(Multioutput.ck_t2)
+GenePP.ck_t3= GetPPMat(Multioutput.ck_t3)
+
+#extract PP from GetMultiPP output, and make new matrix
+capture.output(GenePP.ck_t1, file = "GenePP.ck_t1.txt", options(max.print = .Machine$integer.max))
+capture.output(GenePP.ck_t2, file = "GenePP.ck_t2.txt", options(max.print = .Machine$integer.max))
+capture.output(GenePP.ck_t3, file = "GenePP.ck_t3.txt", options(max.print = .Machine$integer.max))
+
+matGenePP.ck_t1<-as.matrix(GenePP.ck_t1)
+matGenePP.ck_t2<-as.matrix(GenePP.ck_t2)
+matGenePP.ck_t3<-as.matrix(GenePP.ck_t3)
+
+#extract genes at least one pattern PP<1-alpha ,alpha=0.001
+#function does not work
+#sigPP(matGenePP.ck_t1); matGenePP.ck_t1<-matGenePP.ck_t1[index,]
+#sigPP(matGenePP.ck_t2); matGenePP.ck_t2<-matGenePP.ck_t2[index,]
+#sigPP(matGenePP.ck_t3); matGenePP.ck_t3<-matGenePP.ck_t3[index,]
+#
+
+alpha=0.001
+
+data <- as.data.frame(matGenePP.ck_t1) 
+
+tmp<-matrix(0,nrow = nrow(data),ncol = 3)
+
+tmp<-as.data.frame(tmp)
+
+row.names(tmp)<-row.names(data)
+
+for (j in 1:3) {
+  for (i in 1:nrow(data)) {
+    
+    if (data[i,j] >= 1-alpha) tmp[i,j]=1 else tmp[i,j]=0;
+    
+  } 
+  
+}
+
+
+
+tmp<-cbind(tmp, sum=rowSums(tmp))
+
+tmp=cbind(gene=row.names(tmp), tmp)
+
+row.names(tmp)=NULL
+
+index1<-which(tmp[,5]>=1);
+matGenePP.ck_t1<-matGenePP.ck_t1[index1,]
+remove(data); remove(tmp);
+
+#
+data <- as.data.frame(matGenePP.ck_t2) 
+
+
+tmp<-matrix(0,nrow = nrow(data),ncol = 3)
+
+tmp<-as.data.frame(tmp)
+
+row.names(tmp)<-row.names(data)
+
+for (j in 1:3) {
+  for (i in 1:nrow(data)) {
+    
+    if (data[i,j] >= 1-alpha) tmp[i,j]=1 else tmp[i,j]=0;
+    
+  } 
+  
+}
+
+
+
+tmp<-cbind(tmp, sum=rowSums(tmp))
+
+tmp=cbind(gene=row.names(tmp), tmp)
+
+row.names(tmp)=NULL
+
+index2<-which(tmp[,5]>=1);
+matGenePP.ck_t2<-matGenePP.ck_t2[index2,]
+remove(data); remove(tmp);
+
+#
+data <- as.data.frame(matGenePP.ck_t3) 
+
+tmp<-matrix(0,nrow = nrow(data),ncol = 3)
+
+tmp<-as.data.frame(tmp)
+
+row.names(tmp)<-row.names(data)
+
+for (j in 1:3) {
+  for (i in 1:nrow(data)) {
+    
+    if (data[i,j] >= 1-alpha) tmp[i,j]=1 else tmp[i,j]=0;
+    
+  } 
+  
+}
+
+
+
+tmp<-cbind(tmp, sum=rowSums(tmp))
+
+tmp=cbind(gene=row.names(tmp), tmp)
+
+row.names(tmp)=NULL
+
+index3<-which(tmp[,5]>=1);
+matGenePP.ck_t3<-matGenePP.ck_t3[index3,]
+
+remove(tmp); remove(data);
+
+#multi conditions, FC test
+GeneFC.ck_t1= GetMultiFC(Multioutput.ck_t1); str(GeneFC.ck_t1)
+GeneFC.ck_t2= GetMultiFC(Multioutput.ck_t2); str(GeneFC.ck_t2)
+GeneFC.ck_t3= GetMultiFC(Multioutput.ck_t3); str(GeneFC.ck_t3)
+
+
+#extract log2postFC from GetMultiFC output, and make new matrix
+capture.output(GeneFC.ck_t1$Log2PostFCMat, file = "GeneFC.ck_t1.txt", options(max.print = .Machine$integer.max))
+capture.output(GeneFC.ck_t2$Log2PostFCMat, file = "GeneFC.ck_t2.txt", options(max.print = .Machine$integer.max))
+capture.output(GeneFC.ck_t3$Log2PostFCMat, file = "GeneFC.ck_t3.txt", options(max.print = .Machine$integer.max))
+
+#use excel to adjust the format, read excel
+library(readxl)
+pFC_ck_t1 <- read_excel("~/Desktop/BMI633/final project/pFC_ck_t1.xlsx")
+
+pFC_ck_t2 <- read_excel("~/Desktop/BMI633/final project/pFC_ck_t2.xlsx")
+
+pFC_ck_t3 <- read_excel("~/Desktop/BMI633/final project/pFC_ck_t3.xlsx")
+
+#####extract gene with log2postFC>2
+matpFC_ck_t1<-pFC_ck_t1[index1,];matpFC_ck_t1<-matpFC_ck_t1[,c(1,2,3,4)]
+matpFC_ck_t2<-pFC_ck_t1[index2,];matpFC_ck_t2<-matpFC_ck_t2[,c(1,2,3,4)]
+matpFC_ck_t3<-pFC_ck_t1[index3,];matpFC_ck_t3<-matpFC_ck_t3[,c(1,2,3,4)]
+
+#
+data <- as.data.frame(matpFC_ck_t1) 
+data[is.na(data)]<-0
+tmp<-matrix(0,nrow = nrow(data),ncol = 4)
+
+tmp<-as.data.frame(tmp)
+
+for (j in 2:4) {
+  for (i in 1:nrow(data)) {
+    
+    if (data[i,j] >= 2 | data[i,j]<=-2 ) tmp[i,j]=1 else tmp[i,j]=0; 
+    
+  } 
+  
+}
+
+tmp<-cbind(tmp, sum=rowSums(tmp))
+index_1<-which(tmp[,5]>=1);
+matpFC_ck_t1<-matpFC_ck_t1[index_1,]
+index_1<-which(tmp[,5]>=3);
+matpFC_ck_t1_2<-matpFC_ck_t1[index_1,]
+remove(tmp);remove(data)
+
+#
+data <- as.data.frame(matpFC_ck_t2) 
+data[is.na(data)]<-0
+tmp<-matrix(0,nrow = nrow(data),ncol = 4)
+
+tmp<-as.data.frame(tmp)
+
+for (j in 2:4) {
+  for (i in 1:nrow(data)) {
+    
+    if (data[i,j] >= 2 | data[i,j]<=-2 ) tmp[i,j]=1 else tmp[i,j]=0; 
+    
+  } 
+  
+}
+
+tmp<-cbind(tmp, sum=rowSums(tmp))
+index_2<-which(tmp[,5]>=1);
+matpFC_ck_t2<-matpFC_ck_t2[index_2,]
+index_2<-which(tmp[,5]>=3);
+matpFC_ck_t2_2<-matpFC_ck_t2[index_2,]
+remove(data); remove(tmp)
+#
+data <- as.data.frame(matpFC_ck_t3) 
+data[is.na(data)]<-0
+tmp<-matrix(0,nrow = nrow(data),ncol = 4)
+
+tmp<-as.data.frame(tmp)
+
+for (j in 2:4) {
+  for (i in 1:nrow(data)) {
+    
+    if (data[i,j] >= 2 | data[i,j]<=-2 ) tmp[i,j]=1 else tmp[i,j]=0; 
+    
+  } 
+  
+}
+
+tmp<-cbind(tmp, sum=rowSums(tmp))
+index_3<-which(tmp[,5]>=1);
+matpFC_ck_t3<-matpFC_ck_t3[index_3,]
+index_3<-which(tmp[,5]>=3);
+matpFC_ck_t3_2<-matpFC_ck_t3[index_3,]
+remove(data);remove(tmp)
+
+#heatmap
+
+matpFC_ck_t1<-as.matrix(matpFC_ck_t1)
+test1<-matpFC_ck_t1
+row.names(test1)<-test1[,1]
+test1<-test1[,-1]
+test1<-data.matrix(test1)
+heatmap(test1[,1:3]);
+
+matpFC_ck_t2<-as.matrix(matpFC_ck_t2)
+test2<-matpFC_ck_t2
+row.names(test2)<-test2[,1]
+test2<-test2[,-1]
+test2<-data.matrix(test2)
+heatmap(test2[,1:3]);
+
+matpFC_ck_t3<-as.matrix(matpFC_ck_t3)
+test3<-matpFC_ck_t3
+row.names(test3)<-test3[,1]
+test3<-test3[,-1]
+test3<-data.matrix(test3)
+heatmap(test3[,1:3]);
+
+#select DEG
+matpFC_ck_t1_2<-matpFC_ck_t1_2[c(-11,-12),]
+matpFC_ck_t2_2<-matpFC_ck_t2_2[c(-8,-9),]
+matpFC_ck_t3_2<-matpFC_ck_t3_2[-8,]
+
+#DEG seeking
+biocLite("Rsamtools")
+library(Rsamtools)
+indexFa("Head_EST-Unigene.5-3.fa")   # create an index of file 'foo.fasta'
+fa = FaFile("Head_EST-Unigene.5-3.fa")
+gr = as(seqinfo(fa), "GRanges")
+DEG.t1_2<-gr[names(gr) %in% matpFC_ck_t1_2$X__1]
+getSeq(fa, DEG.t1_2)
+
+DEG.t2_2<-gr[names(gr) %in% matpFC_ck_t2_2$X__1]
+getSeq(fa, DEG.t2_2)
+
+DEG.t3_2<-gr[names(gr) %in% matpFC_ck_t3_2$X__1]
+getSeq(fa, DEG.t3_2)
+
+DEG1<-merge(matpFC_ck_t1,matpFC_ck_t2, by = intersect(col(matpFC_ck_t1)[1], col(matpFC_ck_t2)[1]))
+
+DEG1<-merge(matpFC_ck_t3,DEG1, by = intersect(col(matpFC_ck_t3)[1], col(DEG1)[1]))
+dim(DEG1)
+DEG2<-merge(matpFC_ck_t1_2,matpFC_ck_t2_2,by = intersect(col(matpFC_ck_t1_2)[1], col(matpFC_ck_t2_2)[1]))
+dim(DEG2)
+DEG3<-merge(DEG1,matpFC_ck_t1_2,by = intersect(col(DEG1)[1], col(matpFC_ck_t1_2)[1]))
+dim(DEG3)
+
+DEG4<-merge(DEG1,matpFC_ck_t2_2,by = intersect(col(DEG1)[1], col(matpFC_ck_t2_2)[1]))
+dim(DEG4)
+
+DEG5<-merge(DEG1,matpFC_ck_t3_2,by = intersect(col(DEG1)[1], col(matpFC_ck_t3_2)[1]))
+dim(DEG5)
+
+#search DEG sequence then blast
+
+#DEG between ck and t1, t2, and t3
+det11<-read.table("data/RSEM_DE/output.ck0_vs_t11.DE")
+det130<-read.table("data/RSEM_DE/output.ck0_vs_t130.DE")
+det16<-read.table("data/RSEM_DE/output.ck0_vs_t16.DE")
+det21<-read.table("data/RSEM_DE/output.ck0_vs_t21.DE")
+det230<-read.table("data/RSEM_DE/output.ck0_vs_t230.DE")
+det26<-read.table("data/RSEM_DE/output.ck0_vs_t26.DE")
+det31<-read.table("data/RSEM_DE/output.ck0_vs_t31.DE")
+det330<-read.table("data/RSEM_DE/output.ck0_vs_t330.DE")
+det36<-read.table("data/RSEM_DE/output.ck0_vs_t36.DE")
+
+#t1
+det11[,3]<-log2(det11$PostFC)
+indext11<-which(det11[,3]>=2 | det11[,3]<=-2 & det11[2]>1-alpha)
+det11<-det11[indext11,];
+
+det130[,3]<-log2(det130$PostFC)
+indext130<-which(det130[,3]>=2 | det130[,3]<=-2 & det130[2]>1-alpha)
+det130<-det130[indext130,];
+
+det16[,3]<-log2(det16$PostFC)
+indext16<-which(det16[,3]>=2 | det16[,3]<=-2  & det16[2]>1-alpha)
+det16<-det16[indext16,];
+
+#t2
+det21[,3]<-log2(det21$PostFC)
+indext21<-which(det21[,3]>=2 | det21[,3]<=-2 & det21[2]>1-alpha)
+det21<-det21[indext21,];
+
+det230[,3]<-log2(det230$PostFC)
+indext230<-which(det230[,3]>=2 | det230[,3]<=-2 & det230[2]>1-alpha)
+det230<-det230[indext230,];
+
+det26[,3]<-log2(det26$PostFC)
+indext26<-which(det26[,3]>=2 | det26[,3]<=-2 & det26[2]>1-alpha)
+det26<-det26[indext26,];
+#t3
+det31[,3]<-log2(det31$PostFC)
+indext31<-which(det31[,3]>=2 | det31[,3]<=-2 & det31[2]>1-alpha)
+det31<-det21[indext31,];
+
+det330[,3]<-log2(det330$PostFC)
+indext330<-which(det330[,3]>=2 | det330[,3]<=-2 & det330[2]>1-alpha)
+det330<-det330[indext330,];
+
+det36[,3]<-log2(det36$PostFC)
+indext36<-which(det36[,3]>=2 | det36[,3]<=-2 & det36[2]>1-alpha)
+det36<-det36[indext36,]
+
+a1<-det11[,c(-1,-4,-5,-6)]
+a30<-det130[,c(-1,-4,-5,-6)]
+a6<-det16[,c(-1,-4,-5,-6)]
+a1<-cbind(row.names(a1), a1); rownames(a1)<-c()
+a30<-cbind(rownames(a30),a30); rownames(a30)<-c()
+a6<-cbind(rownames(a6),a6) ; rownames(a6)<-c()
+
+b1<-det21[,c(-1,-4,-5,-6)]
+b30<-det230[,c(-1,-4,-5,-6)]
+b6<-det26[,c(-1,-4,-5,-6)]
+b1<-cbind(rownames(b1),b1) ; rownames(b1)<-c()
+b30<-cbind(rownames(b30),b30) ; rownames(b30)<-c()
+b6<-cbind(rownames(b6), b6) ; rownames(b6)<-c()
+
+c1<-det31[,c(-1,-4,-5,-6)] 
+c30<-det330[,c(-1,-4,-5,-6)]
+c6<-det36[,c(-1,-4,-5,-6)]
+c1<-cbind(rownames(c1),c1) ; rownames(c1)<-c()
+c30<-cbind(rownames(c30),c30); rownames(c30)<-c()
+c6<-cbind(rownames(c6),c6); rownames(c6)<-c()
+
+tmp1<-merge(a1, b1, by = intersect(col(a1)[1],col(b1)[1]))
+dim(tmp1)
+deg1<-merge(tmp1, c1, by = intersect(col(tmp1)[1],col(c1)[1]))
+dim(deg1)
+
+tmp30<-merge(a30, b30, by = intersect(col(a30)[1],col(b30)[1]))
+dim(tmp30)
+deg30<-merge(tmp30, c30, by = intersect(col(tmp30)[1],col(c30)[1]))
+dim(deg30)
+
+tmp6<-merge(a6, b6, by = intersect(col(a6)[1],col(b6)[1]))
+dim(tmp6)
+deg6<-merge(tmp6, c6, by = intersect(col(tmp6)[1],col(c6)[1]))
+dim(deg6)
+
+biocLite("hclust")
+install.packages('hclust')
+library("hclust");
+hh<-as.matrix(read_xls('merge-2.xls'))
+row.names(hh)<-hh[,1]
+hh<-hh[,-1]
+#Clustering the time-points
+hc1 <- hclust(dist(t(hh)));
+plot(hc1);
+#Clustering the genes
+hc2 <- hclust(dist(hh));
+plot(hh);
+
+hh<-data.matrix(hh)
+hh<-hh[,-1]
+heatmap(hh)
